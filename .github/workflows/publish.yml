@@ -22,7 +22,10 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Prepare package for publish
+        run: npm run prepublish:dist
       - name: Publish
         run: npm publish --provenance
+        working-directory: dist
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

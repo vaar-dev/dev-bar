@@ -1,7 +1,7 @@
 {
   "name": "@vaardev/dev-bar",
   "license": "MIT",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "repository": {
     "url": "git+https://github.com/vaar-dev/dev-bar.git"
@@ -26,6 +26,7 @@
     "dev": "vite",
     "build": "vite build --config vite.lib.config.ts",
     "build:demo": "tsc -b && vite build",
+    "prepublish:dist": "node scripts/prepare-dist-package.mjs",
     "lint": "oxlint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
