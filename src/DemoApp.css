@@ -1,0 +1,9 @@
+#center {
+  width: 100vw;
+  height: 100vh;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
