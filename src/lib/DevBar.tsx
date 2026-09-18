@@ -1,4 +1,3 @@
-import { isDevEnvironment } from "./detectDev";
 import DevBarPanel from "./DevBarPanel";
 import type { DevBarProps } from "./types";
 
@@ -7,9 +6,7 @@ import type { DevBarProps } from "./types";
 // this chunk anyway (they'd need it available synchronously either way).
 // For real code-splitting, lazy-load DevBarView yourself - see the README.
 export function DevBar({ isDev, ...viewProps }: DevBarProps) {
-  const shouldRender = isDev ?? isDevEnvironment();
-
-  if (!shouldRender) return null;
+  if (!isDev) return null;
 
   return <DevBarPanel {...viewProps} />;
 }
