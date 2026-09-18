@@ -21,7 +21,7 @@ button opens its own pane of custom content.
 ## Install
 
 ```sh
-npm install dev-bar
+npm install @vaardev/dev-bar
 ```
 
 `react` and `react-dom` (^18 or ^19) are peer dependencies.
