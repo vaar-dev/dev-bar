@@ -55,8 +55,11 @@ export interface DevBarViewProps {
 
 export interface DevBarProps extends DevBarViewProps {
   /**
-   * Force the dev bar on/off. Omit to auto-detect based on the environment
-   * (Vite/webpack dev mode, NODE_ENV, or localhost).
+   * Whether the dev bar should render. Required, deliberately with no
+   * default - "development" means something different in every setup, so
+   * there's no environment check this package could bake in that would be
+   * right for everyone. See the README for how to compute this for your
+   * own bundler/environment.
    */
-  isDev?: boolean;
+  isDev: boolean;
 }

@@ -5,8 +5,11 @@ small square button (bottom-right by default); clicking it expands into
 a horizontal toolbar of developer-configured tools, where each tool
 button opens its own pane of custom content.
 
-- **Off by default in production.** Auto-detects dev mode (Vite/webpack
-  `DEV`/`NODE_ENV`, or `localhost`) unless you override it with `isDev`.
+- **You control when it shows.** `isDev` is a required prop with no
+  built-in auto-detection - "dev" means something different in every
+  setup, so there's no environment check this package could bake in that
+  would be right for everyone. See
+  [Determining `isDev`](#determining-isdev) for examples.
 - **Zero styling footprint.** Renders into an isolated shadow DOM, so the
   bar's CSS never leaks onto your page and your page's CSS never leaks
   into the bar. No stylesheet to import.
@@ -21,7 +24,7 @@ button opens its own pane of custom content.
 ## Install
 
 ```sh
-npm install dev-bar
+npm install @vaardev/dev-bar
 ```
 
 `react` and `react-dom` (^18 or ^19) are peer dependencies.
@@ -55,7 +58,9 @@ function App() {
   return (
     <>
       {/* ...your app... */}
-      <DevBar tools={[consoleTool]} />
+      {/* import.meta.env.DEV is Vite's flag - see "Determining isDev" for
+          other bundlers, and for hiding it in staging/preview too. */}
+      <DevBar isDev={import.meta.env.DEV} tools={[consoleTool]} />
     </>
   );
 }
@@ -94,7 +99,7 @@ import { DevBar } from "dev-bar";
 import { reactQueryTool } from "devbar-tool-react-query";
 import { myOwnTool } from "./devbar-tools/my-own-tool";
 
-<DevBar tools={[reactQueryTool, myOwnTool]} />;
+<DevBar isDev={import.meta.env.DEV} tools={[reactQueryTool, myOwnTool]} />;
 ```
 
 `defineDevBarTool` is just an identity function - it exists purely so
@@ -115,8 +120,9 @@ doesn't lazy-load anything internally: since `DevBarView` is also a
 regular export from this package (see below), a bundler can't split it
 out of `DevBar`'s own module on its own - it has no way to know you won't
 also import `DevBarView` directly elsewhere. Code-splitting has to happen
-at an import boundary you control. There are two ways to do that, and you
-can mix them.
+at an import boundary you control, using whatever `isDev`-equivalent
+check you've settled on (see [Determining `isDev`](#determining-isdev)).
+There are two ways to do that, and you can mix them.
 
 **Own the whole thing yourself (recommended for anything nontrivial).**
 `DevBarView` is the same bar, minus the `isDev` check - it always mounts
@@ -146,7 +152,8 @@ export default function DevBarSetup() {
 ```tsx
 // App.tsx
 import { lazy, Suspense } from "react";
-import { isDevEnvironment } from "dev-bar";
+
+const IS_DEV = import.meta.env.DEV; // or whatever fits your setup
 
 const DevBarSetup = lazy(() => import("./devbar"));
 
@@ -154,7 +161,7 @@ function App() {
   return (
     <>
       {/* ...your app... */}
-      {isDevEnvironment() && (
+      {IS_DEV && (
         <Suspense fallback={null}>
           <DevBarSetup />
         </Suspense>
@@ -165,11 +172,10 @@ function App() {
 ```
 
 Now the bar and every tool it imports live in one chunk that's only
-fetched when `isDevEnvironment()` is true (swap in your own flag if you
-need to force it) - no per-tool `lazy()` needed, and no redundant nested
-lazy boundary on top of your own. You can still `lazy()` an individual
-tool inside `devbar.tsx` if you want it split further (say, one
-particularly heavy tool you rarely open) - `component` accepts either.
+fetched when `IS_DEV` is true - no per-tool `lazy()` needed, and no
+redundant nested lazy boundary on top of your own. You can still `lazy()`
+an individual tool inside `devbar.tsx` if you want it split further (say,
+one particularly heavy tool you rarely open) - `component` accepts either.
 
 **Or keep using plain `<DevBar tools={[...]} />`, and `lazy()` individual
 tools.** If you're not wrapping anything yourself, wrap a nontrivial
@@ -196,12 +202,12 @@ state in its pane - the rest of the toolbar stays interactive.
 
 ### Props
 
-| Prop       | Type                                                                                              | Default               | Description                                           |
-| ---------- | ------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------- |
-| `isDev`    | `boolean`                                                                                         | auto-detected         | Force show/hide. Omit to auto-detect the environment. |
-| `position` | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'bottom-right'`      | Where the bar docks to along the viewport edge.       |
-| `icon`     | `ReactNode`                                                                                       | a generic tools glyph | Icon shown on the collapsed toggle button.            |
-| `tools`    | `DevBarTool[]`                                                                                    | `[]`                  | The tools shown in the expanded toolbar.              |
+| Prop       | Type                                                                                              | Default               | Description                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------- |
+| `isDev`    | `boolean`                                                                                         | _(required)_          | Whether the bar renders. See [Determining `isDev`](#determining-isdev). |
+| `position` | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'bottom-right'`      | Where the bar docks to along the viewport edge.                         |
+| `icon`     | `ReactNode`                                                                                       | a generic tools glyph | Icon shown on the collapsed toggle button.                              |
+| `tools`    | `DevBarTool[]`                                                                                    | `[]`                  | The tools shown in the expanded toolbar.                                |
 
 `DevBarView` takes the same props except `isDev` (it always renders when
 you render it).
@@ -218,12 +224,56 @@ A `DevBarTool` is:
 `DevBarToolProps` is `{ close: () => void }`, passed to every tool
 component so it can close its own pane.
 
-Force it on or off explicitly regardless of environment:
+### Determining `isDev`
+
+There's no auto-detection, by design. "Dev" means something different in
+every setup, and there's no environment check this package could bake in
+that would be reliable across all of them:
+
+- `import.meta.env.DEV` is a Vite-only API, and Vite fully resolves it
+  into a static object during _any_ `vite build`, including this
+  library's own build when it gets published. A check for it inside this
+  package would always see _this package's_ build mode, never yours.
+- Hostname conventions vary too much to guess: `localhost` covers plain
+  local dev, but plenty of teams run local dev behind a custom domain
+  (`*.dev.internal`, a `/etc/hosts` entry, a tunnel), and "is this
+  hostname a dev environment" is genuinely undecidable from the outside.
+
+So: figure out what "dev" means for your app, the same way you would for
+any other environment-conditional code, and pass it in. A few common
+shapes:
 
 ```tsx
-<DevBar isDev={false} />
-<DevBar isDev={import.meta.env.MODE === 'staging'} />
+// Vite
+const IS_DEV = import.meta.env.DEV;
+
+// webpack / Create React App / Next.js (client-side)
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+// A custom local-dev hostname convention
+const IS_DEV = window.location.hostname.endsWith(".dev.internal");
 ```
+
+**Multiple pre-production environments.** If your setup has more than
+just dev/prod - say `development`, `staging`, `qa`, `production` - `isDev`
+is still just "should this render at all," and `tools` is a plain array
+you already control, so no extra API is needed to vary either by
+environment:
+
+```tsx
+type AppEnv = "development" | "staging" | "qa" | "production";
+const APP_ENV = import.meta.env.VITE_APP_ENV as AppEnv;
+
+const IS_DEV = APP_ENV !== "production";
+
+// Only show a "reset test data" tool somewhere it can't hit real users.
+const tools = APP_ENV === "production" ? [] : [consoleTool, resetTestDataTool];
+
+<DevBar isDev={IS_DEV} tools={tools} />;
+```
+
+Compute this once per app (a module-level constant, as above) and reuse
+it everywhere you need an environment check, `DevBar`'s `isDev` included.
 
 ## Local development
 
